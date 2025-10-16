@@ -40,6 +40,8 @@ class Job(BaseModel):
     description: str
     postedDate: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     applicants: int = 0
+    experience: Optional[str] = None
+    deadline: Optional[str] = None
 
 class JobCreate(BaseModel):
     title: str
