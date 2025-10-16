@@ -49,6 +49,8 @@ class JobCreate(BaseModel):
     jobType: str
     salary: str
     description: str
+    experience: Optional[str] = None
+    deadline: Optional[str] = None
     applicants: Optional[int] = 0
 
 class JobUpdate(BaseModel):
