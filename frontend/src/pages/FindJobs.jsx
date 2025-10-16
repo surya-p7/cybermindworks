@@ -224,7 +224,7 @@ const FindJobs = () => {
             ))}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };
