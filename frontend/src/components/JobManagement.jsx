@@ -40,8 +40,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+const API = `${BACKEND_URL}`;
+
+// Debug log
+console.log('Using API URL:', API);
 
 const JobManagement = () => {
   const [jobs, setJobs] = useState([]);
@@ -68,20 +71,11 @@ const JobManagement = () => {
 
   useEffect(() => {
     fetchJobs();
-    seedInitialData();
   }, []);
 
   useEffect(() => {
     applyFilters();
   }, [jobs, searchTerm, statusFilter, jobTypeFilter, locationFilter]);
-
-  const seedInitialData = async () => {
-    try {
-      await axios.post(`${API}/jobs/seed`);
-    } catch (error) {
-      console.error("Error seeding data:", error);
-    }
-  };
 
   const fetchJobs = async () => {
     try {
@@ -125,40 +119,108 @@ const JobManagement = () => {
 
   const handleAddJob = async () => {
     try {
-      await axios.post(`${API}/jobs`, formData);
+      // Only include fields that match the CreateJobDto
+      const jobData = {
+        title: formData.title,
+        company: formData.company,
+        location: formData.location,
+        jobType: formData.jobType,
+        salary: formData.salary,
+        description: formData.description,
+        requirements: formData.requirements || '',
+        responsibilities: formData.responsibilities || '',
+        deadline: formData.deadline || null
+      };
+      
+      console.log('Sending job data:', jobData);
+      
+      const response = await axios.post(`${API}/jobs`, jobData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Response:', response.data);
+      
       toast.success("Job added successfully");
       setIsAddDialogOpen(false);
       resetForm();
       fetchJobs();
     } catch (error) {
-      toast.error("Failed to add job");
-      console.error("Error adding job:", error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      const errorMessage = error.response?.data?.message || 'Failed to add job';
+      toast.error(`Error: ${errorMessage}`);
     }
   };
 
   const handleEditJob = async () => {
+    if (!selectedJob || !selectedJob.id) {
+      console.error('No job selected for editing');
+      toast.error('No job selected for editing');
+      return;
+    }
+
     try {
-      await axios.put(`${API}/jobs/${selectedJob.id}`, formData);
+      // Remove fields that backend doesn't expect
+      const { status, applicants, ...jobData } = formData;
+      
+      console.log('Updating job with data:', jobData);
+      
+      const response = await axios.patch(`${API}/jobs/${selectedJob.id}`, jobData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Update response:', response.data);
+      
       toast.success("Job updated successfully");
       setIsEditDialogOpen(false);
       resetForm();
       fetchJobs();
     } catch (error) {
-      toast.error("Failed to update job");
-      console.error("Error updating job:", error);
+      console.error('Update error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      const errorMessage = error.response?.data?.message || 'Failed to update job';
+      toast.error(`Error: ${errorMessage}`);
     }
   };
 
   const handleDeleteJob = async () => {
+    if (!selectedJob || !selectedJob.id) {
+      console.error('No job selected for deletion');
+      toast.error('No job selected for deletion');
+      return;
+    }
+
     try {
-      await axios.delete(`${API}/jobs/${selectedJob.id}`);
+      console.log(`Deleting job with ID: ${selectedJob.id}`);
+      const response = await axios.delete(`${API}/jobs/${selectedJob.id}`);
+      
+      console.log('Delete response:', response.data);
+      
       toast.success("Job deleted successfully");
       setDeleteDialogOpen(false);
       setSelectedJob(null);
       fetchJobs();
     } catch (error) {
-      toast.error("Failed to delete job");
-      console.error("Error deleting job:", error);
+      console.error('Delete error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      const errorMessage = error.response?.data?.message || 'Failed to delete job';
+      toast.error(`Error: ${errorMessage}`);
     }
   };
 

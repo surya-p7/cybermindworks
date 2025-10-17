@@ -1,37 +1,39 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
-import { Search, MapPin, Briefcase, Clock } from "lucide-react";
+import { Search, MapPin, Briefcase, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import api from "../utils/api";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+const API = `${BACKEND_URL}`;
 
 const Home = () => {
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [jobTypeFilter, setJobTypeFilter] = useState("all");
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchJobs();
-    seedInitialData();
   }, []);
 
   useEffect(() => {
     applyFilters();
   }, [jobs, searchTerm, locationFilter, jobTypeFilter]);
-
-  const seedInitialData = async () => {
-    try {
-      await axios.post(`${API}/jobs/seed`);
-    } catch (error) {
-      console.error("Error seeding data:", error);
-    }
-  };
 
   const fetchJobs = async () => {
     try {
@@ -75,6 +77,48 @@ const Home = () => {
     if (diffHours < 24) return `${diffHours}h ago`;
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
+  };
+
+  const handleApplyClick = (job) => {
+    if (!isAuthenticated) {
+      toast.error("Please login to apply for jobs");
+      navigate("/login");
+      return;
+    }
+    if (user?.role === 'employer') {
+      toast.error("Employers cannot apply for jobs");
+      return;
+    }
+    setSelectedJob(job);
+    setCoverLetter("");
+    setShowApplyModal(true);
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!coverLetter.trim()) {
+      toast.error("Please write a cover letter");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await api.post('/applications', {
+        jobId: selectedJob.id,
+        coverLetter: coverLetter.trim(),
+      });
+      toast.success("Application submitted successfully!");
+      setShowApplyModal(false);
+      setCoverLetter("");
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      if (error.response?.status === 400) {
+        toast.error(error.response.data.message || "You have already applied for this job");
+      } else {
+        toast.error("Failed to submit application");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -166,12 +210,83 @@ const Home = () => {
                 <div className="text-sm font-medium text-gray-900 mb-4">{job.salary}</div>
                 <Button
                   className="w-full bg-[#0066ff] hover:bg-[#0052cc] text-white"
+                  onClick={() => handleApplyClick(job)}
                   data-testid={`apply-button-${job.id}`}
                 >
                   Apply Now
                 </Button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Apply Modal */}
+        {showApplyModal && selectedJob && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && setShowApplyModal(false)}>
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Apply for Position</h2>
+                  <button
+                    onClick={() => setShowApplyModal(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <div className="flex gap-4 mb-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-bold text-xl">{selectedJob.company.charAt(0)}</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">{selectedJob.title}</h3>
+                      <p className="text-gray-600">{selectedJob.company}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">{selectedJob.location}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <Label htmlFor="coverLetter" className="text-base font-semibold mb-2 block">
+                    Cover Letter *
+                  </Label>
+                  <Textarea
+                    id="coverLetter"
+                    value={coverLetter}
+                    onChange={(e) => setCoverLetter(e.target.value)}
+                    placeholder="Tell us why you're a great fit for this position..."
+                    rows={8}
+                    className="resize-none"
+                  />
+                  <p className="text-sm text-gray-500 mt-2">
+                    Minimum 50 characters ({coverLetter.length}/50)
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowApplyModal(false)}
+                    className="flex-1"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSubmitApplication}
+                    className="flex-1 bg-[#0066ff] hover:bg-[#0052cc] text-white"
+                    disabled={isSubmitting || coverLetter.length < 50}
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit Application"}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>

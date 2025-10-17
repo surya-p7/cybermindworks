@@ -1,20 +1,20 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import axios from "axios";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Search, MapPin, Briefcase, User } from "lucide-react";
+import { Search, MapPin, Briefcase, User, LogOut, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { useAuth } from "@/contexts/AuthContext";
+import { jobsAPI } from "@/utils/api";
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -29,22 +29,48 @@ const Header = () => {
   });
 
   const handleCreateJob = async () => {
+    if (!isAuthenticated) {
+      toast.error("Please login to create a job");
+      navigate('/login');
+      return;
+    }
+
     try {
+      const salary = formData.salaryMin && formData.salaryMax 
+        ? `₹${formData.salaryMin} - ₹${formData.salaryMax}`
+        : '';
+
       const jobData = {
-        ...formData,
-        salary: `₹${formData.salaryMin} - ₹${formData.salaryMax}`,
-        status: "Active",
-        applicants: 0,
+        title: formData.title,
+        company: formData.company,
+        location: formData.location,
+        description: formData.description,
+        jobType: formData.jobType,
+        salary: salary,
+        requirements: formData.experience,
+        deadline: formData.deadline || undefined,
       };
-      await axios.post(`${API}/jobs`, jobData);
+
+      await jobsAPI.create(jobData);
       toast.success("Job published successfully");
       setIsCreateDialogOpen(false);
       resetForm();
       window.location.reload();
     } catch (error) {
-      toast.error("Failed to create job");
+      if (error.response?.status === 401) {
+        toast.error("Please login to create a job");
+        navigate('/login');
+      } else {
+        toast.error(error.response?.data?.message || "Failed to create job");
+      }
       console.error("Error creating job:", error);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Logged out successfully");
+    navigate('/');
   };
 
   const resetForm = () => {
@@ -122,23 +148,55 @@ const Header = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link to="/profile">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:bg-gray-800"
-                data-testid="profile-button"
-              >
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/profile">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-gray-800"
+                    data-testid="profile-button"
+                    title={user?.fullName}
+                  >
+                    <User className="h-5 w-5" />
+                  </Button>
+                </Link>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-gray-800"
+                  onClick={handleLogout}
+                  title="Logout"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </>
+            ) : (
+              <Link to="/login">
+                <Button
+                  variant="ghost"
+                  className="text-white hover:bg-gray-800"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Login
+                </Button>
+              </Link>
+            )}
             
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button
                   className="bg-[#7c3aed] hover:bg-[#6d28d9] text-white font-medium px-5 py-2"
                   data-testid="create-job-button"
-                  onClick={() => resetForm()}
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error("Please login to create a job");
+                      navigate('/login');
+                    } else {
+                      resetForm();
+                    }
+                  }}
                 >
                   Create Job
                 </Button>

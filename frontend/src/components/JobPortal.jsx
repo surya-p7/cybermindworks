@@ -9,8 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+const API = `${BACKEND_URL}`;
 
 const JobPortal = () => {
   const [jobs, setJobs] = useState([]);
@@ -33,20 +33,11 @@ const JobPortal = () => {
 
   useEffect(() => {
     fetchJobs();
-    seedInitialData();
   }, []);
 
   useEffect(() => {
     applyFilters();
   }, [jobs, searchTerm, locationFilter, jobTypeFilter]);
-
-  const seedInitialData = async () => {
-    try {
-      await axios.post(`${API}/jobs/seed`);
-    } catch (error) {
-      console.error("Error seeding data:", error);
-    }
-  };
 
   const fetchJobs = async () => {
     try {
@@ -86,8 +77,6 @@ const JobPortal = () => {
       const jobData = {
         ...formData,
         salary: `₹${formData.salaryMin} - ₹${formData.salaryMax}`,
-        status: "Active",
-        applicants: 0,
       };
       await axios.post(`${API}/jobs`, jobData);
       toast.success("Job published successfully");
