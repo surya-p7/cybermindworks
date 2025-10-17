@@ -11,7 +11,7 @@ async function bootstrap() {
   const allowedOrigins = frontendUrl ? frontendUrl.split(',') : ['http://localhost:3000'];
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
