@@ -701,4 +701,5 @@ For support, email support@cybermindworks.com or open an issue on GitHub.
 
 ---
 
-**Made with ❤️ by CyberMindWorks Team**
+**Developed with ❤️ by Surya Pranav Perumalla as part of CyberMindWorks assignment**
+
