@@ -8,7 +8,7 @@ A full-stack job portal application built with **NestJS** (backend) and **React*
 ![NestJS](https://img.shields.io/badge/nestjs-10.0.0-red.svg)
 
 ---
-##[Live Link](https://cybermindworks-d4cx4yavk-surya-pranavs-projects.vercel.app/)
+**[Live Link](https://cybermindworks-d4cx4yavk-surya-pranavs-projects.vercel.app/)**
 ## 📋 Table of Contents
 
 - [Features](#-features)
@@ -701,5 +701,5 @@ For support, email support@cybermindworks.com or open an issue on GitHub.
 
 ---
 
-**Developed with ❤️ by Surya Pranav Perumalla as part of CyberMindWorks assignment**
+**Developed with ❤️ by Surya Pranav Perumalla**
 
